@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", default=0.001, type=float)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--num_workers", default=0, type=int) # 0으로 하지 않으면 데이터로더값이 nan으로 나오는 오류 발생
+    parser.add_argument("--dataset_name", type=str, default="mnist")
     parser.add_argument("--model_path", type=str, default="models/VAE_model.pth")
     parser.add_argument("--mode", type=str, default="train")
     args = parser.parse_args()

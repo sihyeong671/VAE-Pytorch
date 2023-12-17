@@ -12,7 +12,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-from module.dataset import trainset, testset
+from module.dataset import get_dataset
 from module.utils import Config, Logger, save_images
 from module.model import VAE
 
@@ -30,6 +30,8 @@ class Trainer:
         if self.config.mode == "train":
             self.logger.info(self.config)
         
+        trainset, testset = get_dataset(self.config.dataset_name)
+        
         self.train_dataloader = DataLoader(
             dataset=trainset,
             num_workers=self.config.num_workers,
@@ -38,13 +40,16 @@ class Trainer:
         )
         
         self.test_dataloader = DataLoader(
-            dataset=trainset,
+            dataset=testset,
             num_workers=self.config.num_workers,
             batch_size=self.config.batch_size,
             shuffle=False
         )
         
+        # 베르누이
         self.bce_loss = nn.BCELoss()
+        # 가우시안
+        # self.mse_loss = nn.MSELoss()
         self.model = VAE(device=self.config.device).to(self.config.device)
         summary(self.model, input_size=(1, 784))
     
@@ -75,7 +80,7 @@ class Trainer:
                 overall_loss += loss.item()
                 optimizer.step()
         
-            message = f"Epoch: {epoch}/{self.config.epochs}\t Avg Loss: {overall_loss / len(self.train_dataloader):.4f}"
+            message = f"Epoch: {epoch}/{self.config.epochs}\t Avg Loss: {overall_loss / (len(self.train_dataloader)*self.config.batch_size):.4f}"
             self.logger.info(message)
         
         torch.save(self.model.state_dict(), self.config.model_path)
@@ -90,18 +95,18 @@ class Trainer:
             gen_imgs = gen_imgs.cpu().numpy()
         save_images(gen_imgs, img_name)
     
-    def interpolate(self, n=15):
+    def interpolate(self, a=1, b=0, n=15):
         # https://avandekleut.github.io/vae/
         self.model.load_state_dict(torch.load(self.config.model_path, map_location=self.config.device))
         self.model.eval()
         x, y = self.test_dataloader.__iter__().__next__()
-        x_1 = x[y == 1][1].to(self.config.device).view(-1, 784)
-        x_2 = x[y == 0][1].to(self.config.device).view(-1, 784)
+        x_1 = x[y == a][1].to(self.config.device).view(-1, 784)
+        x_2 = x[y == b][1].to(self.config.device).view(-1, 784)
         with torch.no_grad():
             mean1, logvar1 = self.model.encoder(x_1)
-            z_1 = self.model._reparameterization(mean1, logvar1)
+            z_1 = self.model._reparameterization(mean1, logvar1, is_train=False)
             mean2, logvar2 = self.model.encoder(x_2)
-            z_2 = self.model._reparameterization(mean2, logvar2)
+            z_2 = self.model._reparameterization(mean2, logvar2, is_train=False)
             z = torch.stack([z_1 + (z_2 - z_1)*t for t in np.linspace(0, 1, n)])
             interpolate_list = self.model.decoder(z)
             interpolate_list = interpolate_list.to('cpu').detach().numpy()
@@ -113,4 +118,4 @@ class Trainer:
             plt.imshow(img)
             plt.xticks([])
             plt.yticks([])
-            plt.savefig("test/interploate_1to0.png")
+            plt.savefig(f"test/interploate_{a}to{b}.png")

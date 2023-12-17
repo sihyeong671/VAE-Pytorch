@@ -13,6 +13,7 @@ class Config:
         self.lr = args.lr
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
+        self.dataset_name = args.dataset_name
         self.mode = args.mode
         self.model_path = args.model_path
         
@@ -45,21 +46,3 @@ def save_images(imgs, img_name):
     
     fig.savefig(img_name)
     
-
-# 이미지 보간 시각화
-def interpolate(vae, x_1, x_2, n=15):
-    
-    z_1 = vae.encoder(x_1)
-    z_2 = vae.encoder(x_2)
-    z = torch.stack([z_1 + (z_2 - z_1)*t for t in np.linspace(0, 1, n)])
-    interpolate_list = vae.decoder(z)
-    interpolate_list = interpolate_list.to('cpu').detach().numpy()
-
-    w = 28
-    img = np.zeros((w, n*w))
-    for i, x_hat in enumerate(interpolate_list):
-        img[:, i*w:(i+1)*w] = x_hat.reshape(28, 28)
-    plt.imshow(img)
-    plt.xticks([])
-    plt.yticks([])
-    plt.savefig("interploate_1to0.png")
