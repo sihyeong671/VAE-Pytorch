@@ -99,8 +99,8 @@ class VAE(nn.Module):
         return z
     
     def forward(self, x):
-        mean, std = self.encoder(x)
-        z = self._reparameterization(mean, std)
+        mean, logvar = self.encoder(x)
+        z = self._reparameterization(mean, logvar)
         output = self.decoder(z)
-        return output, mean, std
+        return output, mean, logvar
         
