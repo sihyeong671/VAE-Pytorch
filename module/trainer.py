@@ -22,7 +22,7 @@ class Trainer:
         if self.config.mode == "train":
             now = datetime.now()
             now_str = now.strftime("%Y-%m-%d %H-%M-%S")
-            self.logger = Logger(f"VAE_logger_{now_str}")
+            self.logger = Logger(f"{self.config.logger_name}_{now_str}")
     
     def setup(self):
         os.makedirs("models/", exist_ok=True)
@@ -95,13 +95,30 @@ class Trainer:
             gen_imgs = gen_imgs.cpu().numpy()
         save_images(gen_imgs, img_name)
     
-    def interpolate(self, a=1, b=0, n=15):
+    def interpolate(self, a=0, b=1, n=15):
         # https://avandekleut.github.io/vae/
         self.model.load_state_dict(torch.load(self.config.model_path, map_location=self.config.device))
         self.model.eval()
-        x, y = self.test_dataloader.__iter__().__next__()
-        x_1 = x[y == a][1].to(self.config.device).view(-1, 784)
-        x_2 = x[y == b][1].to(self.config.device).view(-1, 784)
+        x_1 = None
+        x_2 = None
+        data_loader = self.test_dataloader.__iter__()
+        x, y = data_loader.__next__()
+        cnt = 0
+        while True:
+            if cnt >= 0: # 시각화 잘 되는 데이터 찾기
+                try:
+                    if x_1 is None:
+                        x_1 = x[y == a][1].to(self.config.device).view(-1, 784)
+                    if x_2 is None:
+                        x_2 = x[y == b][1].to(self.config.device).view(-1, 784)
+                except IndexError:
+                    x, y = data_loader.__next__()
+                    continue
+            cnt += 1
+            data_loader.__next__()
+            if x_1 is not None and x_2 is not None:
+                break
+            
         with torch.no_grad():
             mean1, logvar1 = self.model.encoder(x_1)
             z_1 = self.model._reparameterization(mean1, logvar1, is_train=False)

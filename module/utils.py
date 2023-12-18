@@ -16,6 +16,7 @@ class Config:
         self.dataset_name = args.dataset_name
         self.mode = args.mode
         self.model_path = args.model_path
+        self.logger_name = args.logger_name
         
     def __str__(self) -> str:
         attributes = "---Config---\n"
